@@ -3,7 +3,8 @@
 Uses iNaturalist vision model to search for birds in frame,
 takes picture when bird is found and writes identification to a text file
 
-TODOs: annotate images, include iNaturalist 3rd-party app integration
+TODOs: annotate images, finish iNat 3rd-party app integration,
+switch prints to logger
 """
 import time
 import argparse
@@ -20,6 +21,7 @@ from picamera import PiCamera
 
 boring = ["Meleagris gallopavo (Wild Turkey)", "background"]
 # because apparently the bird feeder looks like a turkey
+
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -42,13 +44,11 @@ def main():
     with contextlib.ExitStack() as stack:
         leds = stack.enter_context(Leds())
         board = stack.enter_context(Board())
-
         camera = stack.enter_context(PiCamera())
 
         # Configure camera
         camera.resolution = (1640, 922)
-        #camera.exposure_mode = 'sports'
-        camera.crop = (0.33, 0.45, 0.3, 0.3)
+        camera.awb_mode = 'sunlight'
         camera.start_preview()
 
         print("Running Bird Trigger Camera")
@@ -62,26 +62,28 @@ def main():
             for result in inference.run():
 
                 if len(inaturalist_classification.get_classes(result)) >= 1:
-                    
+
                     classes = inaturalist_classification.get_classes(result,
                                                              top_k=args.top_k,
                                                              threshold=args.threshold)
 
-
                     for i, (label, score) in enumerate(classes):
 
-                        if(label not in boring):
+                        if(label not in boring and score > 0.2):
                             print('Result %d: %s (prob=%f)' % (i, label, score))
 
+                            # write observation to file
                             birdlist = open("birdimages/birdlist.txt","a") #append mode
                             birdlist.write(time.strftime("%y-%m-%d_%H-%M-%S")+" %s (prob=%f) \n" % (label, score))
                             birdlist.close()
 
+                            # save picture
                             camera.capture("birdimages/"+time.strftime("%y-%m-%d_%H-%M-%S")+".jpg")
-                        else:
-                            print("Ignoring image artifact: "+label)
-                    # TODO: fix timing and when pictures are taken
-                    time.sleep(30)
+                            time.sleep(45)
+
+                        # else:
+                        #     print("Ignoring image artifact: "+label)
+                    # TODO: fix timing / when pictures are taken
 
 
         camera.stop_preview()

@@ -1,5 +1,5 @@
 [Unit]
-Description=AIY Joy Detection Demo
+Description= iNaturalist bird observation camera
 Requires=dev-vision_spicomm.device
 After=dev-vision_spicomm.device
 Wants=aiy-board-info.service
