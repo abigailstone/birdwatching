@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 Uses iNaturalist vision model to search for birds in frame,
-takes picture when bird is found and writes identification to a text file
+takes a picture when a bird is found and writes identification to a text file
 
-TODOs: annotate images, finish iNat 3rd-party app integration,
+TODOs:
 switch prints to logger
+fix .service file
 """
 import time
 import argparse
@@ -12,7 +13,6 @@ import contextlib
 
 from aiy.board import Board
 from aiy.leds import Color, Leds, Pattern, PrivacyLed
-from aiy.toneplayer import TonePlayer
 
 from aiy.vision.inference import CameraInference
 from aiy.vision.models import inaturalist_classification
@@ -24,16 +24,21 @@ boring = ["Meleagris gallopavo (Wild Turkey)", "background"]
 
 
 def main():
+
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument('--threshold', '-t', type=float, default=0.1,
                         help='Classification probability threshold.')
+
     parser.add_argument('--top_k', '-n', type=int, default=1,
                         help='Max number of returned classes.')
+
     parser.add_argument('--sparse', '-s', action='store_true', default=False,
                         help='Use sparse tensors.')
+
     parser.add_argument('--model', '-m', choices=('plants', 'insects', 'birds'),
                         required=False, default='birds', help='Model to run.')
+
     args = parser.parse_args()
 
 
@@ -51,9 +56,10 @@ def main():
         camera.awb_mode = 'sunlight'
         camera.start_preview()
 
+        # Capture a sample ROI image
+        camera.capture("birdimages/ROI_sample.jpg")
         print("Running Bird Trigger Camera")
 
-        camera.capture("birdimages/ROI_sample.jpg")
         time.sleep(2)
 
         # Inference
@@ -69,7 +75,7 @@ def main():
 
                     for i, (label, score) in enumerate(classes):
 
-                        if(label not in boring and score > 0.2):
+                        if(label not in boring):
                             print('Result %d: %s (prob=%f)' % (i, label, score))
 
                             # write observation to file
@@ -77,14 +83,13 @@ def main():
                             birdlist.write(time.strftime("%y-%m-%d_%H-%M-%S")+" %s (prob=%f) \n" % (label, score))
                             birdlist.close()
 
+                            id = label.split(' ')
+
                             # save picture
-                            camera.capture("birdimages/"+time.strftime("%y-%m-%d_%H-%M-%S")+".jpg")
-                            time.sleep(45)
-
-                        # else:
-                        #     print("Ignoring image artifact: "+label)
-                    # TODO: fix timing / when pictures are taken
-
+                            camera.annotate_text(id[0]+' '+id[1]+' (prob='+int(score*100)+'%)')
+                            camera.capture("birdimages/"+time.strftime("%y%m%d_%H%M%S_")+id[0]+"_"+id[1]+".jpg")
+                            time.sleep(20)
+                            
 
         camera.stop_preview()
 
