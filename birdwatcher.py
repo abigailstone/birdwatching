@@ -4,7 +4,6 @@ Uses iNaturalist vision model to search for birds in frame,
 takes a picture when a bird is found and writes identification to a text file
 
 TODOs:
-switch prints to logger
 fix .service file
 """
 import time
@@ -12,7 +11,6 @@ import argparse
 import contextlib
 
 from aiy.board import Board
-from aiy.leds import Color, Leds, Pattern, PrivacyLed
 
 from aiy.vision.inference import CameraInference
 from aiy.vision.models import inaturalist_classification
@@ -31,19 +29,18 @@ def write_observation(obs):
         birdlist.write(obs)
 
 
-def lookforbirds(model_type, thresh, topk, sparse):
+def lookforbirds(model_type, thresh, topk):
     """
     Main driver code for inference and camera capture
     """
 
     with contextlib.ExitStack() as stack:
-        leds = stack.enter_context(Leds())
         board = stack.enter_context(Board())
-        camera = stack.enter_context(PiCamera())
+        camera = stack.enter_context(PiCamera(sensor_mode=4, framerate=30))
 
         # Configure camera
         camera.resolution = (1640, 922)
-        camera.awb_mode = 'sunlight'
+        camera.awb_mode = 'auto' # auto white balance
         camera.start_preview()
 
         # Capture a sample ROI image
@@ -94,9 +91,6 @@ if __name__ == '__main__':
     parser.add_argument('--top_k', '-n', type=int, default=1,
                         help='Max number of returned classes.')
 
-    parser.add_argument('--sparse', '-s', action='store_true', default=False,
-                        help='Use sparse tensors.')
-
     parser.add_argument('--model', '-m', choices=('plants', 'insects', 'birds'),
                         required=False, default='birds', help='Model to run.')
 
@@ -107,4 +101,4 @@ if __name__ == '__main__':
                   'insects': inaturalist_classification.INSECTS,
                   'birds':   inaturalist_classification.BIRDS}[args.model]
 
-    lookforbirds(model_type, args.threshold, args.top_k, args.sparse)
+    lookforbirds(model_type, args.threshold, args.top_k)

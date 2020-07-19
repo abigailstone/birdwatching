@@ -11,7 +11,7 @@ Restart=no
 User=pi
 Environment=AIY_BOARD_NAME=AIY-Board
 EnvironmentFile=-/run/aiy-board-info
-ExecStart=/usr/bin/python3 /home/pi/AIY-projects-python/src/abigail/birdwatcher.py
+ExecStart=/usr/bin/python3 /home/pi/birds/birdwatcher.py
 
 [Install]
 WantedBy=multi-user.target
